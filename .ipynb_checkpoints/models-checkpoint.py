@@ -22,7 +22,7 @@ class Net(nn.Module):
         # output tensor: (n + 2p - f)/S + 1 = 95 -> (32, 220, 220)
         # after pooling: (32, 110, 110)
         self.conv_layer1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size = 3, stride=1, padding=1, bias=False),
+            nn.Conv2d(1, 32, kernel_size = 3, stride=1, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
@@ -32,7 +32,7 @@ class Net(nn.Module):
         # output tensor: (n + 2p - f)/S + 1 -> (64, 110, 110)
         # after pooling: (64, 50, 50)    
         self.conv_layer2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1,bias=False),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
@@ -43,7 +43,7 @@ class Net(nn.Module):
         # output tensor: (n + 2p - f)/S + 1 -> (128, 50, 50)
         # after pooling: (128, 25, 25)   
         self.conv_layer3 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1,bias=False),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
@@ -54,7 +54,7 @@ class Net(nn.Module):
         # output tensor: (n + 2p - f)/S + 1 -> (256, 25, 25)
         # after global pooling: (256, 12, 12)
         self.conv_layer4 = nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1,bias=False),
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
@@ -63,42 +63,33 @@ class Net(nn.Module):
         
         # input tensor:  (256, 12, 12)
         # output tensor: (n + 2p - f)/S + 1 -> (512, 12, 12)
-        # after max pooling: (512, 6, 6)
+        # after global pooling: (512, 12, 12)
         self.conv_layer5 = nn.Sequential(
-            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=0,bias=False),
+            nn.Conv2d(256, 512, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(512),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Dropout2d(p=0.4)
-        )
-        
-        # input tensor:  (512, 12, 12)
-        # output tensor: (n + 2p - f)/S + 1 -> (1024, 12, 12)
-        # after global pooling: (1024, 6, 6)
-        self.conv_layer6 = nn.Sequential(
-            nn.Conv2d(512, 1024, kernel_size=1, stride=1, padding=0,bias=False),
-            nn.BatchNorm2d(1024),
             nn.ReLU(),
             nn.AdaptiveAvgPool2d(1),
             nn.Dropout2d(p=0.4)
         )
+        
 
-        ### Flatten after Global Avg Pooling for Linear layer (512 feature maps ###
-        self.fc_layer7 = nn.Sequential(
-            nn.Linear(1024, 1000),
+        ### Flatten after Global Avg Pooling for Linear layer ###
+        self.fc_layer6 = nn.Sequential(
+            nn.Linear(512, 700),
             nn.ReLU(),
-            nn.BatchNorm1d(1000),
-            nn.Dropout(p=0.3)
+            nn.BatchNorm1d(700),
+            nn.Dropout(p=0.33)
         )
         
         
-        self.fc_layer8 = nn.Sequential(
-            nn.Linear(1000,136)
+        self.fc_layer7 = nn.Sequential(
+            nn.Linear(700,136)
         )
         
         for m in self.modules():
                     if isinstance(m, nn.Conv2d):
                             weight_init.xavier_uniform_(m.weight)
+                            weight_init.constant_(m.bias, 0)
                     elif isinstance(m, nn.Linear):
                             weight_init.xavier_normal_(m.weight)
                             weight_init.uniform_(m.bias, -0.1,0.1)
@@ -114,9 +105,8 @@ class Net(nn.Module):
         x = self.conv_layer3(x)
         x = self.conv_layer4(x)
         x = self.conv_layer5(x)
-        x = self.conv_layer6(x)
         x = x.view(x.size(0), -1)
+        x = self.fc_layer6(x)
         x = self.fc_layer7(x)
-        x = self.fc_layer8(x)
         # a modified x, having gone through all the layers of your model, should be returned
         return x
